@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Player - Bocce Stats</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(90deg, 
+                #009246 33%, /* Italian green */
+                #ffffff 33%, 66%,
+                #ce2b37 66% /* Italian red */
+            );
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #ce2b37;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #009246;
+            border-radius: 4px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .submit-btn, .back-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .submit-btn {
+            background-color: #009246;
+            color: white;
+        }
+
+        .back-btn {
+            background-color: #ce2b37;
+            color: white;
+        }
+
+        .submit-btn:hover {
+            background-color: #007236;
+        }
+
+        .back-btn:hover {
+            background-color: #ae1b27;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Add New Player</h1>
+        <form id="addPlayerForm">
+            <div class="form-group">
+                <label for="playerName">Player Name:</label>
+                <input type="text" id="playerName" name="playerName" required>
+            </div>
+            <div class="buttons">
+                <button type="submit" class="submit-btn">Add Player</button>
+                <a href="index.html" class="back-btn">Back to List</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('addPlayerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const playerName = document.getElementById('playerName').value;
+            let players = JSON.parse(localStorage.getItem('boccePlayers') || '[]');
+            
+            players.push({
+                name: playerName,
+                id: Date.now(),
+                stats: []
+            });
+            
+            localStorage.setItem('boccePlayers', JSON.stringify(players));
+            window.location.href = 'index.html';
+        });
+    </script>
+</body>
+</html>
