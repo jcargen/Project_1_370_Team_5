@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Stats - Bocce</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(90deg, 
+                #009246 33%, /* Italian green */
+                #ffffff 33%, 66%,
+                #ce2b37 66% /* Italian red */
+            );
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+            border: 2px solid #009246;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .game-list {
+            border: 2px solid #ce2b37;
+            min-height: 300px;
+            border-radius: 4px;
+            padding: 20px;
+            background-color: white;
+        }
+
+        .game-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #009246;
+            border-radius: 4px;
+            background-color: white;
+        }
+
+        .add-game-btn {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background-color: #009246;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+            text-decoration: none;
+        }
+
+        .add-game-btn:hover {
+            background-color: #007236;
+        }
+
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #ce2b37;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .game-list-container {
+            position: relative;
+            margin-top: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #ce2b37;
+            padding-bottom: 10px;
+        }
+
+        .win {
+            color: #009246;
+        }
+
+        .loss {
+            color: #ce2b37;
+        }
+
+        .ball-stats {
+            display: flex;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .ball-stat {
+            flex: 1;
+            padding: 15px;
+        }
+
+        .ball-stat.red {
+            background-color: rgba(206, 43, 55, 0.1);
+            border-right: 1px solid #009246;
+        }
+
+        .ball-stat.green {
+            background-color: rgba(0, 146, 70, 0.1);
+        }
+
+        .ball-stat .stat-label {
+            font-size: 12px;
+        }
+
+        .ball-stat .stat-value {
+            font-size: 20px;
+        }
+
+        .delete-game-btn {
+            background-color: #ce2b37;
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .delete-game-btn:hover {
+            background-color: #ae1b27;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-btn">← Back to Players</a>
+        <h1 id="playerName">Player Name</h1>
+
+        <div class="stats-container">
+            <div class="stat-box">
+                <div class="stat-label">Games Played</div>
+                <div class="stat-value" id="gamesPlayed">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Games Won</div>
+                <div class="stat-value" id="gamesWon">0</div>
+            </div>
+            <div class="stat-box ball-stats">
+                <div class="ball-stat red">
+                    <div class="stat-label">Red Win %</div>
+                    <div class="stat-value" id="redBallWinRate">0%</div>
+                </div>
+                <div class="ball-stat green">
+                    <div class="stat-label">Green Win %</div>
+                    <div class="stat-value" id="greenBallWinRate">0%</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-list-container">
+            <a href="#" class="add-game-btn" id="addGameBtn">+ Add Game</a>
+            <div class="game-list" id="gameList">
+                <!-- Games will be added here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get player ID from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const playerId = parseInt(urlParams.get('id'));
+
+        // Update add-game-btn href
+        document.getElementById('addGameBtn').href = `add_game.html?id=${playerId}`;
+
+        // Load player data
+        function loadPlayerData() {
+            const players = JSON.parse(localStorage.getItem('boccePlayers') || '[]');
+            const player = players.find(p => p.id === playerId);
+            
+            if (!player) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Set player name
+            document.getElementById('playerName').textContent = player.name;
+
+            // Calculate stats
+            const games = player.games || [];
+            const gamesWon = games.filter(game => game.result === 'win').length;
+            
+            // Calculate red ball win percentage
+            const redBallGames = games.filter(game => game.ballColor === 'red');
+            const redBallWins = redBallGames.filter(game => game.result === 'win').length;
+            const redBallWinRate = redBallGames.length > 0 
+                ? Math.round((redBallWins / redBallGames.length) * 100) 
+                : 0;
+
+            // Calculate green ball win percentage
+            const greenBallGames = games.filter(game => game.ballColor === 'green');
+            const greenBallWins = greenBallGames.filter(game => game.result === 'win').length;
+            const greenBallWinRate = greenBallGames.length > 0 
+                ? Math.round((greenBallWins / greenBallGames.length) * 100) 
+                : 0;
+
+            // Update stats
+            document.getElementById('gamesPlayed').textContent = games.length;
+            document.getElementById('gamesWon').textContent = gamesWon;
+            document.getElementById('redBallWinRate').textContent = `${redBallWinRate}%`;
+            document.getElementById('greenBallWinRate').textContent = `${greenBallWinRate}%`;
+
+            // Display games
+            displayGames(games);
+        }
+
+        function displayGames(games) {
+            const gameList = document.getElementById('gameList');
+            
+            if (games.length === 0) {
+                gameList.innerHTML = '<p style="text-align: center; color: #666;">No games recorded yet</p>';
+                return;
+            }
+
+            const gameElements = games.map(game => `
+                <div class="game-card">
+                    <div>
+                        <strong>vs ${game.opponent}</strong>
+                        <span class="${game.result}">(${game.result.toUpperCase()})</span>
+                        ${game.ballColor ? `<span style="margin-left: 10px">(${game.ballColor} balls)</span>` : ''}
+                    </div>
+                    <div>
+                        <span>${game.date}</span>
+                        <span style="margin-left: 10px">Score: ${game.score}</span>
+                        <button class="delete-game-btn" onclick="deleteGame('${game.date}', '${game.opponent}')">×</button>
+                    </div>
+                </div>
+            `).join('');
+
+            gameList.innerHTML = gameElements;
+        }
+
+        function deleteGame(date, opponent) {
+            if (confirm('Are you sure you want to delete this game?')) {
+                let players = JSON.parse(localStorage.getItem('boccePlayers') || '[]');
+                const playerIndex = players.findIndex(p => p.id === playerId);
+                
+                if (playerIndex !== -1) {
+                    // Find and remove the specific game
+                    players[playerIndex].games = players[playerIndex].games.filter(game => 
+                        !(game.date === date && game.opponent === opponent)
+                    );
+                    
+                    // Save updated data
+                    localStorage.setItem('boccePlayers', JSON.stringify(players));
+                    
+                    // Reload player data to update stats and game list
+                    loadPlayerData();
+                }
+            }
+        }
+
+        loadPlayerData();
+    </script>
+</body>
+</html>

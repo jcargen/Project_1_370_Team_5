@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bocce Stats</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(90deg, 
+                #009246 33%, /* Italian green */
+                #ffffff 33%, 66%,
+                #ce2b37 66% /* Italian red */
+            );
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .player-list-container {
+            position: relative;
+            margin-top: 20px;
+        }
+        
+        .add-player-btn {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background-color: #009246; /* Italian green */
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .add-player-btn:hover {
+            background-color: #007236;
+        }
+        
+        .player-list {
+            border: 2px solid #ce2b37; /* Italian red */
+            min-height: 300px;
+            border-radius: 4px;
+            padding: 20px;
+            background-color: white;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #ce2b37; /* Italian red */
+            padding-bottom: 10px;
+        }
+
+        .player-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #009246;
+            border-radius: 4px;
+            background-color: white;
+        }
+
+        .player-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .delete-btn {
+            background-color: #ce2b37;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .add-stats-btn {
+            background-color: #009246;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .delete-btn:hover {
+            background-color: #ae1b27;
+        }
+
+        .add-stats-btn:hover {
+            background-color: #007236;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bocce Stats</h1>
+        
+        <div class="player-list-container">
+            <a href="add_player.html" class="add-player-btn">+ Add Player</a>
+            <div class="player-list" id="playerList">
+                <!-- Players will be added here dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function displayPlayers() {
+            const playerList = document.getElementById('playerList');
+            const players = JSON.parse(localStorage.getItem('boccePlayers') || '[]');
+            
+            if (players.length === 0) {
+                playerList.innerHTML = '<p style="text-align: center; color: #666;">No players added yet</p>';
+                return;
+            }
+
+            const playerElements = players.map(player => `
+                <div class="player-card">
+                    <span>${player.name}</span>
+                    <div class="player-actions">
+                        <button class="delete-btn" onclick="deletePlayer(${player.id})">Delete</button>
+                        <button class="add-stats-btn" onclick="viewPlayer(${player.id})">
+                            View Player
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            playerList.innerHTML = playerElements;
+        }
+
+        function viewPlayer(id) {
+            window.location.href = `player_view.html?id=${id}`;
+        }
+
+        function deletePlayer(id) {
+            if (confirm('Are you sure you want to delete this player?')) {
+                let players = JSON.parse(localStorage.getItem('boccePlayers') || '[]');
+                players = players.filter(player => player.id !== id);
+                localStorage.setItem('boccePlayers', JSON.stringify(players));
+                displayPlayers();
+            }
+        }
+
+        // Display players when page loads
+        displayPlayers();
+    </script>
+</body>
+</html>
