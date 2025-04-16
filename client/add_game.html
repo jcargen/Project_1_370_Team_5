@@ -45,7 +45,7 @@
             color: #333;
         }
 
-        input, select {
+        input, select, textarea {
             width: 100%;
             padding: 8px;
             border: 1px solid #009246;
@@ -120,6 +120,33 @@
                 </select>
             </div>
 
+            <div class="form-group">
+                <label for="location">Location <span class="optional-label">(optional)</span></label>
+                <input type="text" id="location" placeholder="e.g. Central Park">
+            </div>
+
+            <div class="form-group">
+                <label for="weather">Weather <span class="optional-label">(optional)</span></label>
+                <select id="weather">
+                    <option value="">Select weather</option>
+                    <option value="sunny">Sunny</option>
+                    <option value="cloudy">Cloudy</option>
+                    <option value="rainy">Rainy</option>
+                    <option value="windy">Windy</option>
+                    <option value="indoor">Indoor</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="duration">Duration (minutes) <span class="optional-label">(optional)</span></label>
+                <input type="number" id="duration" min="0">
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Game Notes <span class="optional-label">(optional)</span></label>
+                <textarea id="notes" rows="3" placeholder="Notable moments or strategies"></textarea>
+            </div>
+
             <div class="buttons">
                 <button type="submit" class="submit-btn">Save Game</button>
                 <button type="button" class="cancel-btn" onclick="window.location.href='player_view.html?id=' + playerId">Cancel</button>
@@ -131,39 +158,84 @@
         const urlParams = new URLSearchParams(window.location.search);
         const playerId = parseInt(urlParams.get('id'));
 
+        // GraphQL client function
+        async function graphqlQuery(query, variables = {}) {
+            const response = await fetch('http://localhost:5000/graphql', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query,
+                    variables
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.errors) {
+                console.error('GraphQL errors:', result.errors);
+                throw new Error(result.errors[0].message);
+            }
+            
+            return result.data;
+        }
+
         document.getElementById('addGameForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
             const gameData = {
+                playerId: playerId,
                 opponent: document.getElementById('opponent').value,
                 date: document.getElementById('date').value || new Date().toISOString().split('T')[0],
-                ballColor: document.getElementById('ballColor').value,
                 score: document.getElementById('score').value,
-                result: document.getElementById('result').value
+                result: document.getElementById('result').value,
+                ballColor: document.getElementById('ballColor').value,
+                location: document.getElementById('location').value,
+                weather: document.getElementById('weather').value,
+                duration: document.getElementById('duration').value ? parseInt(document.getElementById('duration').value) : null,
+                notes: document.getElementById('notes').value
             };
 
-            // Get existing player data
-            let players = JSON.parse(localStorage.getItem('boccePlayers') || '[]');
-            const playerIndex = players.findIndex(p => p.id === playerId);
-            
-            if (playerIndex === -1) {
-                alert('Player not found!');
-                return;
-            }
+            // Remove any null/empty values
+            Object.keys(gameData).forEach(key => 
+                (gameData[key] === null || gameData[key] === "") && delete gameData[key]
+            );
 
-            // Initialize games array if it doesn't exist
-            if (!players[playerIndex].games) {
-                players[playerIndex].games = [];
-            }
+            // Build GraphQL mutation
+            let mutationArgs = Object.entries(gameData)
+                .map(([key, value]) => {
+                    if (typeof value === 'string') {
+                        return `${key}: "${value}"`;
+                    }
+                    return `${key}: ${value}`;
+                })
+                .join(', ');
 
-            // Add new game
-            players[playerIndex].games.unshift(gameData);
+            const mutation = `
+                mutation {
+                    addGame(${mutationArgs}) {
+                        success
+                        game {
+                            opponent
+                            date
+                        }
+                    }
+                }
+            `;
             
-            // Save updated data
-            localStorage.setItem('boccePlayers', JSON.stringify(players));
-            
-            // Return to player view
-            window.location.href = `player_view.html?id=${playerId}`;
+            graphqlQuery(mutation)
+                .then(data => {
+                    if (data.addGame.success) {
+                        window.location.href = `player_view.html?id=${playerId}`;
+                    } else {
+                        alert('Failed to add game');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error adding game:', error);
+                    alert('Error adding game');
+                });
         });
     </script>
 </body>
