@@ -102,20 +102,57 @@
     </div>
 
     <script>
+        // GraphQL client function
+        async function graphqlQuery(query, variables = {}) {
+            const response = await fetch('http://localhost:5000/graphql', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query,
+                    variables
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.errors) {
+                console.error('GraphQL errors:', result.errors);
+                throw new Error(result.errors[0].message);
+            }
+            
+            return result.data;
+        }
+
         document.getElementById('addPlayerForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
             const playerName = document.getElementById('playerName').value;
-            let players = JSON.parse(localStorage.getItem('boccePlayers') || '[]');
             
-            players.push({
-                name: playerName,
-                id: Date.now(),
-                stats: []
-            });
+            const mutation = `
+                mutation {
+                    addPlayer(name: "${playerName}") {
+                        player {
+                            id
+                            name
+                        }
+                    }
+                }
+            `;
             
-            localStorage.setItem('boccePlayers', JSON.stringify(players));
-            window.location.href = 'index.html';
+            graphqlQuery(mutation)
+                .then(data => {
+                    if (data.addPlayer && data.addPlayer.player) {
+                        window.location.href = 'index.html';
+                    } else {
+                        alert('Failed to add player');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error adding player:', error);
+                    alert('Error adding player');
+                });
         });
     </script>
 </body>

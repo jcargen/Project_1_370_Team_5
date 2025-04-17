@@ -206,45 +206,113 @@
         // Update add-game-btn href
         document.getElementById('addGameBtn').href = `add_game.html?id=${playerId}`;
 
+        // GraphQL client function
+        async function graphqlQuery(query, variables = {}) {
+            const response = await fetch('http://localhost:5000/graphql', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    query,
+                    variables
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.errors) {
+                console.error('GraphQL errors:', result.errors);
+                throw new Error(result.errors[0].message);
+            }
+            
+            return result.data;
+        }
+
         // Load player data
         function loadPlayerData() {
-            const players = JSON.parse(localStorage.getItem('boccePlayers') || '[]');
-            const player = players.find(p => p.id === playerId);
+            const query = `
+                query {
+                    player(id: ${playerId}) {
+                        id
+                        name
+                        games {
+                            date
+                            opponent
+                            score
+                            result
+                            ballColor
+                            location
+                            weather
+                            notes
+                        }
+                        stats {
+                            gamesPlayed
+                            gamesWon
+                            winPercentage
+                            redBallWinRate
+                            greenBallWinRate
+                            averagePoints
+                            highestScore
+                            currentStreak
+                            longestStreak
+                        }
+                    }
+                }
+            `;
             
-            if (!player) {
-                window.location.href = 'index.html';
-                return;
-            }
+            graphqlQuery(query)
+                .then(data => {
+                    const player = data.player;
+                    
+                    if (!player) {
+                        throw new Error('Player not found');
+                    }
+                    
+                    // Set player name
+                    document.getElementById('playerName').textContent = player.name;
 
-            // Set player name
-            document.getElementById('playerName').textContent = player.name;
-
-            // Calculate stats
-            const games = player.games || [];
-            const gamesWon = games.filter(game => game.result === 'win').length;
-            
-            // Calculate red ball win percentage
-            const redBallGames = games.filter(game => game.ballColor === 'red');
-            const redBallWins = redBallGames.filter(game => game.result === 'win').length;
-            const redBallWinRate = redBallGames.length > 0 
-                ? Math.round((redBallWins / redBallGames.length) * 100) 
-                : 0;
-
-            // Calculate green ball win percentage
-            const greenBallGames = games.filter(game => game.ballColor === 'green');
-            const greenBallWins = greenBallGames.filter(game => game.result === 'win').length;
-            const greenBallWinRate = greenBallGames.length > 0 
-                ? Math.round((greenBallWins / greenBallGames.length) * 100) 
-                : 0;
-
-            // Update stats
-            document.getElementById('gamesPlayed').textContent = games.length;
-            document.getElementById('gamesWon').textContent = gamesWon;
-            document.getElementById('redBallWinRate').textContent = `${redBallWinRate}%`;
-            document.getElementById('greenBallWinRate').textContent = `${greenBallWinRate}%`;
-
-            // Display games
-            displayGames(games);
+                    // Update stats
+                    document.getElementById('gamesPlayed').textContent = player.stats.gamesPlayed;
+                    document.getElementById('gamesWon').textContent = player.stats.gamesWon;
+                    document.getElementById('redBallWinRate').textContent = `${player.stats.redBallWinRate}%`;
+                    document.getElementById('greenBallWinRate').textContent = `${player.stats.greenBallWinRate}%`;
+                    
+                    // Add new stats elements if they don't exist
+                    const statsContainer = document.querySelector('.stats-container');
+                    
+                    // Check if we need to add the new stats elements
+                    if (!document.getElementById('streakStat')) {
+                        const streakStat = document.createElement('div');
+                        streakStat.id = 'streakStat';
+                        streakStat.className = 'stat-box';
+                        streakStat.innerHTML = `
+                            <div class="stat-label">Current Streak</div>
+                            <div class="stat-value" id="currentStreak">${player.stats.currentStreak}</div>
+                        `;
+                        statsContainer.appendChild(streakStat);
+                        
+                        const highScoreStat = document.createElement('div');
+                        highScoreStat.id = 'highScoreStat';
+                        highScoreStat.className = 'stat-box';
+                        highScoreStat.innerHTML = `
+                            <div class="stat-label">Highest Score</div>
+                            <div class="stat-value" id="highestScore">${player.stats.highestScore}</div>
+                        `;
+                        statsContainer.appendChild(highScoreStat);
+                    } else {
+                        // Just update the values
+                        document.getElementById('currentStreak').textContent = player.stats.currentStreak;
+                        document.getElementById('highestScore').textContent = player.stats.highestScore;
+                    }
+                    
+                    // Display games
+                    displayGames(player.games || []);
+                })
+                .catch(error => {
+                    console.error('Error loading player data:', error);
+                    window.location.href = 'index.html';
+                });
         }
 
         function displayGames(games) {
@@ -261,12 +329,14 @@
                         <strong>vs ${game.opponent}</strong>
                         <span class="${game.result}">(${game.result.toUpperCase()})</span>
                         ${game.ballColor ? `<span style="margin-left: 10px">(${game.ballColor} balls)</span>` : ''}
+                        ${game.location ? `<span style="margin-left: 10px">${game.location}</span>` : ''}
                     </div>
                     <div>
                         <span>${game.date}</span>
                         <span style="margin-left: 10px">Score: ${game.score}</span>
                         <button class="delete-game-btn" onclick="deleteGame('${game.date}', '${game.opponent}')">×</button>
                     </div>
+                    ${game.notes ? `<div class="game-notes">${game.notes}</div>` : ''}
                 </div>
             `).join('');
 
@@ -275,21 +345,26 @@
 
         function deleteGame(date, opponent) {
             if (confirm('Are you sure you want to delete this game?')) {
-                let players = JSON.parse(localStorage.getItem('boccePlayers') || '[]');
-                const playerIndex = players.findIndex(p => p.id === playerId);
+                const mutation = `
+                    mutation {
+                        deleteGame(playerId: ${playerId}, date: "${date}", opponent: "${opponent}") {
+                            success
+                        }
+                    }
+                `;
                 
-                if (playerIndex !== -1) {
-                    // Find and remove the specific game
-                    players[playerIndex].games = players[playerIndex].games.filter(game => 
-                        !(game.date === date && game.opponent === opponent)
-                    );
-                    
-                    // Save updated data
-                    localStorage.setItem('boccePlayers', JSON.stringify(players));
-                    
-                    // Reload player data to update stats and game list
-                    loadPlayerData();
-                }
+                graphqlQuery(mutation)
+                    .then(data => {
+                        if (data.deleteGame.success) {
+                            loadPlayerData();
+                        } else {
+                            alert('Failed to delete game');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting game:', error);
+                        alert('Error deleting game');
+                    });
             }
         }
 
