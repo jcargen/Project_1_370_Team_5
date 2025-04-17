@@ -1,4 +1,4 @@
-# Project_1_370_Team_5 (Bocces Stats Tracker) (GraphQL)
+# Project_1_370_Team_5 (Bocce Stats Tracker) (GraphQL)
 This is a game/player stat tracker for the Bocce.
 ### Frontend
 - HTML, CSS, JavaScript + GraphQL Queries
